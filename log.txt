@@ -1,0 +1,113 @@
+Rails new UF --api
+
+Instalar gema Rack Cors 
+
+gem 'rack-cors' -- bundle
+
+guardar csv en carpeta temp
+
+rails g model uf date:date value:integer
+
+class Uf < ApplicationRecord
+    def self.load_csv_data
+        file = File.open('tmp/ufenero.csv')
+        file_data = file.readlines.map(&:chomp)
+            file_data.each_with_index do |row, index|
+                next if index.zero?
+                cols = row.split(',')
+                Uf.create(date: "2019-01-#{cols[0]}", value: cols[1].to_i)
+            end
+    end
+end
+
+
+rails g controller ufs by_date
+
+creamos carpeta Api y dentro de esta V1
+
+Controlador Uf
+
+module Api
+  module V1 
+    class UfsController < ActionController::API
+      def by_date
+        @uf = Uf.find_by(date: params[:date])
+        render json: @uf
+      end
+    end
+  end
+end
+
+Arreglamos las rutas del proyecto
+
+Rails.application.routes.draw do
+  namespace :api, defaults: {format: 'json'} do
+    namespace :v1 do
+      resources :ufs, only: [] do
+        collection do
+          get 'by_date/:date', to: 'ufs#by_date'
+        end
+      end
+    end
+  end
+  # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
+end
+
+Primero Crear Modelo Cliente
+
+rails g model client name log_in_count:integer
+
+Tener creado al cliente, mediante la consola
+
+modificar controlador de Ufs 
+
+module Api
+  module V1 
+    class UfsController < ActionController::API
+      def by_date
+        @client = Client.find_by(name: request.headers["X-CLIENTE"])
+        @client.log_in_count += 1
+        @client.save
+        @uf = Uf.find_by(date: params[:date])
+        render json: @uf
+      end
+    end
+  end
+end
+
+Crear ruta para consultar cuenta de consultas
+
+Rails.application.routes.draw do
+  namespace :api, defaults: {format: 'json'} do
+    namespace :v1 do
+      resources :ufs, only: [] do
+        collection do
+          get 'by_date/:date', to: 'ufs#by_date'
+        end
+      end
+      resources :clients, only: [] do
+        collection do
+          get ':name', to: 'clients#by_name'
+        end
+      end
+    end
+  end
+  # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
+end
+
+Crear controlador de clientes con metodo by_name
+
+rails g controller clients by_name
+
+module Api
+  module V1 
+    class ClientsController < ActionController::API
+      def by_name
+        @client = Client.find_by(name: params[:name])
+        render json: @client
+      end
+    end
+  end
+end
+
+y listo! suerte chao
